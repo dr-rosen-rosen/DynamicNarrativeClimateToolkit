@@ -1,0 +1,103 @@
+# Glint Survey Domain Definitions
+
+domains:
+  ActMan:
+    name: 'Accountability - Manager'
+    items: 
+      - 'My manager discussed the results of the last employee pulse survey with our team.'
+  ActTake:
+    name: 'Action Taking'
+    items:  
+      - 'I believe meaningful action will be taken as a result of this survey.'
+  Auth:
+    name: 'Authenticity'
+    items:  
+      - 'I am comfortable being myself at work.'
+  Belong:
+    name: 'Belonging'
+    items:  
+      - 'I feel a sense of belonging at this organization.'
+  Care:
+    name: 'Care'
+    items:  
+      - 'At work, I feel cared about as a person.'
+  Career:
+    name: 'Career'
+    items:  
+      - 'I have good career opportunities at Johns Hopkins.'
+  CareerPath:
+  name: 'Career Path'
+  items: 'My manager has meaningful discussions with me about my career development.' 
+    'Coaching': ['I have ongoing conversations with my manager about my performance.'], 
+    'Collaboration': ['Teams at this organization collaborate effectively to get things done.'], 
+    'Communication': ['This organization?does a good job of communicating with employees.'], 
+    'Company Support': ['I feel well supported by Johns Hopkins at this time.'], 
+    'Concerns Addressed Appropriately': ['Employee concerns about discrimination, harassment, or offensive incidents are appropriately addressed by this organization.'], 
+    'DIB Changes': ['What should your company consider changing (doing less of, more of, or differently) in support of diversity, inclusion, and belonging?'], 
+    'Diversity Commitment': ['Top leaders demonstrate a visible commitment to diversity.'], 
+    'Empowerment': ['I feel empowered to make decisions regarding my work.'], 
+    'Feedback': ['My manager provides me with feedback that helps me improve my performance.'], 
+    'GPS - Change Willingness': ['Actions taken based on safety event reporting have led to positive changes here.'], 
+    'GPS - Communication': ['There is good communication between leaders and employees here about patient safety.'], 
+    'GPS - Exchange': ['The exchange of information between departments occurs smoothly.'], 
+    'GPS - Just Response': ['There is a just process for handling safety-related errors here.'], 
+    'GPS - Learning From Mistakes': ['We discuss ways to prevent safety errors from happening again.'], 
+    'GPS - Modeling': ["Leadership's actions show that patient safety is a top priority."], 
+    'GPS - Ownership': ['I feel empowered to correct potential safety hazards.'], 
+    'GPS - Psychological Safety': ['I can speak up about patient safety without fear of retaliation.'], 
+    'GPS - Recognition': ['Employees who prioritize patient safety are appreciated here.'], 
+    'GPS - Resources': ['We have the resources we need to keep patients safe.'], 
+    'GPS - Root Cause': ["At this organization, we seek to solve problems permanently rather than just come up with a 'quick fix.'"], 
+    'GPS - Safety Habits': ['Ensuring patient safety is part of the way we do things around here.'], 
+    'GPS - Safety Referral': ['I would recommend this organization to family and friends as a safe place to receive care.'], 
+    'GPS - Safety Start Doing': ['What should we start doing (or do more of) to make our culture here safer?'], 
+    'GPS - Safety Stop Doing': ['What should we stop doing to make our culture here safer?'], 
+    'GPS - Teamwork': ['We support each other in caring for patients safely here.'], 
+    'GPS - Training': ['The patient safety-related training I receive is effective.'], 
+    'GPS - Voice': ['My input about patient safety is valued here.'], 
+    'General Safety': ['Johns Hopkins cares about my safety'], 
+    'Growth': ['I have good opportunities to learn and grow at this organization.'], 
+    'Growth Feedback': ['I receive feedback that helps me learn and grow.'], 
+    'Humanity - Respect - Culture': ['People at Johns Hopkins treat each other with respect and dignity.'], 
+    'Improve - One Change': ['What is one change you would suggest to make Johns Hopkins an even better place to work?'], 
+    'Improve Well-being': ['What is one change Johns Hopkins can make to better support your overall well-being?'], 
+    'Intent - Improve': ['What is one aspect of your work experience that would need to change for you to want to continue working at Johns Hopkins.'], 
+    'Intent - Postive': ['What do you like best about working at Johns Hopkins'], 
+    'Intent to Stay': ['I plan to be working at Johns Hopkins two years from now.'], 
+    'Just Culture': ['When mistakes/errors are made, my leadership team focuses on learning rather than blaming individuals.'], 
+    'Leadership': ['I have confidence in the leadership team.'], 
+    'Manager': ['I would recommend my manager to others.'], 
+    'Opinions Count': ['My opinions seem to count.'], 
+    'Purpose': ['The work that I do at this organization?is meaningful to me.'], 
+    'RNX - Autonomy - Empowered': ['I feel empowered to make nursing care decisions in the clinical care of patients.'], 
+    'RNX - Autonomy - Involved': ['I feel appropriately involved in decisions about the nursing practices that affect my work.'], 
+    'RNX - Autonomy - Outside Nursing': ['I am given the autonomy to be involved in decisions outside of day-to-day nursing practices.'], 
+    'RNX - Development - Resources': ['I have the resources I need to further my professional development.'], 
+    'RNX - Fundamentals - CNO Vision': ['Our Nursing Leadership (i.e., The CNO and his/her direct reports) has a strong vision that supports high standards for nursing practice.'], 
+    'RNX - Fundamentals - Competence': ['RNs at Johns Hopkins are clinically competent.'], 
+    'RNX - Fundamentals - Evidence': ['RNs at Johns Hopkins incorporate evidence-based and standard findings into the delivery of patient care.'], 
+    'RNX - Fundamentals - Improvement': ['RNs at Johns Hopkins contribute to continuous quality improvement.'], 
+    'RNX - Fundamentals - Nursing Model': ['The Nursing Professional Practice Model incorporates the mission, vision, philosophy, and values of Johns Hopkins.'], 
+    'RNX - Fundamentals - Patient-Centered': ['RNs partner with patients and families to deliver individualized patient-centered care.'], 
+    'RNX - Fundamentals - Safety': ['We promote a culture of safety here in the nurse work environment.'], 
+    'RNX - Leadership - Responsiveness': ['Our nursing leadership (i.e., the CNO and his/her direct reports) is responsive to nursing questions and concerns.'], 
+    'RNX - Leadership - Support': ['Our nursing leadership (i.e., the CNO and his/her direct reports) can be counted on to support the team.'], 
+    'RNX - Magnet - Development - Growth': ['I have good opportunities to learn and grow at Johns Hopkins.'], 
+    'RNX - Magnet - Job Resources': ['I have the resources I need to do my job well.'], 
+    'RNX - Magnet - Staff Resources': ['We have enough employees to get our work done.'], 
+    'RNX - Relationships - Collaboration': ['I collaborate well with members of all interprofessional teams (e.g., pharmacy, laboratory, radiology, physicians).'], 
+    'RNX - Relationships - Working': ['I have a good working relationship with members of all interprofessional teams (e.g., pharmacy, laboratory, radiology, physicians).'], 
+    'RNX - Teamwork - Collaboration': ['RNs at Johns Hopkins collaborate effectively to get things done.'], 
+    'RNX - Teamwork - RN Cooperation': ['Teamwork and cooperation exist among RNs at Johns Hopkins.'], 
+    'Recognition': ['I feel satisfied with the recognition or praise I receive for my work.'], 
+    'Recommend': ['I would recommend Johns Hopkins as a great place to work.'], 
+    'Resilience': ['I am able to cope effectively with work-related stress. '], 
+    'Resources': ['I have the resources I need to do my job well.'], 
+    'Respectful Treatment': ['I am treated with respect and dignity.'], 
+    'Role Model': ['Senior leaders at this organization lead by example.'], 
+    'Support - Manager': ['I can get the support I need from my manager.'], 
+    'Values': ['People at Johns Hopkins live the company values.'], 
+    'Well-Being': ["This organization takes a genuine interest in the employees' well-being."], 
+    'What Else?': ['What else is on your mind?'], 
+    'Work Life Balance': ['I am able to successfully balance my work and personal life.'], 
+    'eSat': ['How happy are you working at this organization?']}

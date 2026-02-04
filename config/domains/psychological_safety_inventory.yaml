@@ -1,0 +1,53 @@
+# Psychological Safety Inventory Domain Definitions
+# Based on validated psychological safety inventory scales:
+#     Plouffe RA, Ein N, Liu JJ, St. Cyr K, Baker C, Nazarov A, Don Richardson J. 
+#     Feeling safe at work: Development and validation of the Psychological Safety Inventory. 
+#     International Journal of Selection and Assessment. 2023 Sep;31(3):443-55.
+#     https://doi.org/10.1111/ijsa.12434
+
+domains:
+  IRT:  # Interpersonal Risk Taking
+    name: "Interpersonal Risk-Taking"
+    items:
+      - "I am not afraid to ask for honest feedback from my team."
+      - "I do not worry about repercussions when I seek help from my team."
+      - "When I disagree with the team, I feel comfortable voicing my opinion."
+      - "I am not afraid to speak up to my team about my concerns"
+      - "I am not afraid to advocate for others within my team."
+  MTR: # Mutual Trust and Respect
+    name: "Mutual Trust/Respect"
+    items:
+      - "My team cares about my well-being."
+      - "I trust my team members."
+      - "My team makes me feel included."
+      - "I feel respected by my team."
+      - "I have a good relationship with my team members."
+      - "I feel a sense of belonging on my team."
+      - "People in the team embrace members’ diverse perspectives."
+  ORS: # Organizational/Structural Support 
+    name: "Organizational Structure Support"
+    items:
+      - "There are services in the organization to help those in need."
+      - "There are policies in place to protect me."
+      - "Supportive resources are accessible."
+      - "I know where to seek help in my organization when I need it."
+      - "Resources are available to enhance my performance."
+      - "If something goes wrong, I know where to find information to solve the issue."
+  ICCT: # Identity and Clarity in Context of Team 
+    name: "Identity and Clarity in Context of Team "
+    items:
+      - "My position is secure."
+      - "My future with the team is clear."
+      - "I identify myself as an important member of my team."
+      - "I do not worry about being let go from the team."
+      - "I am stable in my position."
+      - "I feel confident in my position."
+  SL: # Supportive Leadership 
+    name: "Supportive Leadership "
+    items:
+      - "My leader(s) encourage a culture of inclusion."
+      - "I trust my leader(s) to be honest with me."
+      - "My leader(s) provide effective guidance."
+      - "I receive constructive feedback from my leader(s)."
+      - "My leader(s) coach me to be better."
+      - "My leader(s) act quickly to correct problems."

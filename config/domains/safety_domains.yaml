@@ -1,0 +1,64 @@
+# Safety Climate Domain Definitions
+# Based on validated safety climate scales:
+#     Beus JM, Payne SC, Arthur Jr W, Muñoz GJ. The development and validation of a cross-industry 
+#     safety climate measure: Resolving conceptual and operational issues. Journal of Management. 
+#     2019 May;45(5):1987-2013.
+
+domains:
+  LSC:  # Leadership Safety Climate
+    name: "Leadership Safety Climate"
+    items:
+      - "My supervisor strictly enforces the safe working procedures in my workgroup."
+      - "My supervisor takes a proactive stance when it comes to safety."
+      - "My supervisor demonstrates leadership by keeping people focused on safety."
+      - "My supervisor takes the lead on safety issues."
+      - "My supervisor is committed to improving safety."
+      - "My supervisor places a strong emphasis on workplace safety."
+  
+  SC:  # Safety Communication
+    name: "Safety Communication"
+    items:
+      - "Safety issues are openly discussed between my supervisor and my workgroup."
+      - "My workgroup gets timely feedback on safety issues we have raised with our supervisor."
+      - "My supervisor keeps my workgroup informed of safety rules."
+      - "My supervisor informs my workgroup when procedure changes affect safety."
+  
+  ST:  # Safety Training
+    name: "Safety Training"
+    items:
+      - "There is adequate safety training in my workgroup."
+      - "Employees receive safety training when they change work tasks."
+      - "Enough time is set aside for employee safety training."
+      - "My supervisor ensures employees have adequate safety training."
+  
+  CSP:  # Coworker Safety Practices
+    name: "Coworker Safety Practices"
+    items:
+      - "My co-workers always follow safety procedures."
+      - "My co-workers are quick to point out unsafe conditions."
+      - "My co-workers take safety very seriously."
+      - "My co-workers are committed to safety improvement."
+  
+  SEH:  # Safety Equipment and Housekeeping
+    name: "Safety Equipment and Housekeeping"
+    items:
+      - "Employees in my workgroup are given sufficient safety equipment."
+      - "Efforts are made in my workgroup to provide safe working conditions."
+      - "Equipment in my work area is checked to make sure it is free of faults."
+      - "Unsafe conditions are promptly corrected in my work area."
+  
+  SI:  # Safety Involvement
+    name: "Safety Involvement"
+    items:
+      - "My supervisor consults with employees regularly about workplace safety issues."
+      - "My supervisor promotes employees' involvement in safety-related matters."
+      - "My supervisor values employees' ideas about improving safety."
+      - "My supervisor encourages employees to become involved in safety matters."
+  
+  SR:  # Safety Rewards
+    name: "Safety Rewards"
+    items:
+      - "The reward system in my workgroup promotes high performance only when work is conducted safely."
+      - "My supervisor rewards safe behaviors."
+      - "My supervisor praises safe work behavior."
+      - "In my workgroup, employees who work safely get recognition."

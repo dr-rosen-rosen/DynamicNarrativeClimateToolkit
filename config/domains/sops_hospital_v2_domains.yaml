@@ -1,0 +1,164 @@
+instrument:
+  name: SOPS Hospital Survey on Patient Safety Culture
+  version: '2.0'
+domains:
+  TW:
+    name: Teamwork
+    items:
+    - text: In this unit, we work together as an effective team.
+      reverse: false
+      id: TW1
+    - text: During busy times, staff in this unit help each other.
+      reverse: false
+      id: TW2
+    - text: There is a problem with disrespectful behavior by those working in this
+        unit.
+      reverse: true
+      id: TW3
+  SWP:
+    name: Staffing and Work Pace
+    items:
+    - text: In this unit, we have enough staff to handle the workload.
+      reverse: false
+      id: SWP1
+    - text: Staff in this unit work longer hours than is best for patient care.
+      reverse: true
+      id: SWP2
+    - text: This unit relies too much on temporary, float, or PRN staff.
+      reverse: true
+      id: SWP3
+    - text: The work pace in this unit is so rushed that it negatively affects patient
+        safety.
+      reverse: true
+      id: SWP4
+  OL:
+    name: Organizational Learning—Continuous Improvement
+    items:
+    - text: This unit regularly reviews work processes to determine if changes are
+        needed to improve patient safety.
+      reverse: false
+      id: OL1
+    - text: In this unit, changes to improve patient safety are evaluated to see how
+        well they worked.
+      reverse: false
+      id: OL2
+    - text: This unit lets the same patient safety problems keep happening.
+      reverse: true
+      id: OL3
+  RE:
+    name: Response to Error
+    items:
+    - text: In this unit, staff feel like their mistakes are held against them.
+      reverse: true
+      id: RE1
+    - text: When an event is reported in this unit, it feels like the person is being
+        written up, not the problem.
+      reverse: true
+      id: RE2
+    - text: When staff make errors, this unit focuses on learning rather than blaming
+        individuals.
+      reverse: false
+      id: RE3
+    - text: In this unit, there is a lack of support for staff involved in patient
+        safety errors.
+      reverse: true
+      id: RE4
+  SMCL:
+    name: Supervisor, Manager, or Clinical Leader Support for Patient Safety
+    items:
+    - text: My supervisor, manager, or clinical leader seriously considers staff suggestions
+        for improving patient safety.
+      reverse: false
+      id: SMCL1
+    - text: My supervisor, manager, or clinical leader wants us to work faster during
+        busy times, even if it means taking shortcuts.
+      reverse: true
+      id: SMCL2
+    - text: My supervisor, manager, or clinical leader takes action to address patient
+        safety concerns that are brought to their attention.
+      reverse: false
+      id: SMCL3
+  CE:
+    name: Communication About Error
+    items:
+    - text: We are informed about errors that happen in this unit.
+      reverse: false
+      id: CE1
+    - text: When errors happen in this unit, we discuss ways to prevent them from
+        happening again.
+      reverse: false
+      id: CE2
+    - text: In this unit, we are informed about changes that are made based on event
+        reports.
+      reverse: false
+      id: CE3
+  CO:
+    name: Communication Openness
+    items:
+    - text: In this unit, staff speak up if they see something that may negatively
+        affect patient care.
+      reverse: false
+      id: CO1
+    - text: When staff in this unit see someone with more authority doing something
+        unsafe for patients, they speak up.
+      reverse: false
+      id: CO2
+    - text: When staff in this unit speak up, those with more authority are open to
+        their patient safety concerns.
+      reverse: false
+      id: CO3
+    - text: In this unit, staff are afraid to ask questions when something does not
+        seem right.
+      reverse: true
+      id: CO4
+  RSE:
+    name: Reporting Patient Safety Events
+    items:
+    - text: When a mistake is caught and corrected before reaching the patient, how
+        often is this reported?
+      reverse: false
+      id: RSE1
+    - text: When a mistake reaches the patient and could have harmed the patient,
+        but did not, how often is this reported?
+      reverse: false
+      id: RSE2
+  HMS:
+    name: Hospital Management Support for Patient Safety
+    items:
+    - text: The actions of hospital management show that patient safety is a top priority.
+      reverse: false
+      id: HMS1
+    - text: Hospital management provides adequate resources to improve patient safety.
+      reverse: false
+      id: HMS2
+    - text: Hospital management seems interested in patient safety only after an adverse
+        event happens.
+      reverse: true
+      id: HMS3
+  HIE:
+    name: Handoffs and Information Exchange
+    items:
+    - text: When transferring patients from one unit to another, important information
+        is often left out.
+      reverse: true
+      id: HIE1
+    - text: During shift changes, important patient care information is often left
+        out.
+      reverse: true
+      id: HIE2
+    - text: During shift changes, there is adequate time to exchange all key patient
+        care information.
+      reverse: false
+      id: HIE3
+  NER:
+    name: Number of Events Reported
+    items:
+    - text: In the past 12 months, how many patient safety events have you reported?
+      reverse: false
+      id: NER1
+  PSR:
+    name: Patient Safety Rating
+    items:
+    - text: How would you rate your unit/work area on patient safety?
+      reverse: false
+      id: PSR1
