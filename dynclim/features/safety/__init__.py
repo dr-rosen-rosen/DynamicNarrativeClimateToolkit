@@ -27,6 +27,15 @@ from dynclim.features.safety.toolkit import (
     WeightedAverageScorer
 )
 
+from dynclim.features.safety.diagnose_feature_completeness import (
+    diagnose_feature_completeness,
+    summarize_all_factors,
+    summarize_failures,
+    domain_failure_detail,
+    segment_starvation_detail
+
+)
+
 from dynclim.features.safety.seg_core import (
     SegmentationStore, 
     sha1, 

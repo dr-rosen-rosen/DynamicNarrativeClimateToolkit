@@ -170,3 +170,4 @@ tables>=3.6.0  # For pandas HDF5 support
 streamlit
 plotly
 blingfire
+openpyxl

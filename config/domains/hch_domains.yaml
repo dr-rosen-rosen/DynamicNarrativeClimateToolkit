@@ -1,0 +1,28 @@
+# HCH anlaysis Domain Definitions
+# Based on GLINT survey
+
+domains:
+  COM:  
+    name: "Communication"
+    items:
+      - "There is good communication between leaders and employees here about patient safety."
+  
+  SC: 
+    name: "Resources"
+    items:
+      - "We have the resources we need to keep patients safe."
+  
+  TWK:  
+    name: "Teamwork"
+    items:
+      - "We support each other in caring for patients safely here."
+  
+  PS:  
+    name: "Psychological Safety"
+    items:
+      - "I can speak up about patient safety without fear of retaliation."
+  
+  INEX:  
+    name: "Exchange"
+    items:
+      - "The exchange of information between departments occurs smoothly."

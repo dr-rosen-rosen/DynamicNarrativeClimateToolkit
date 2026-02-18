@@ -356,94 +356,7 @@ class Processor:
         }
 
         return diag
-    # @torch.inference_mode()
-    # def _build_gpu_diagnostics(self, sims_block, mask, 
-    #                         #    scores, strength,
-    #                         # strength_type, entropy, 
-    #                         threshold_config, composite_config):
-        
-    #     """
-    #                         sims_block, mask, sent_signal_cpu, strength_signal_cpu, 
-    #                 strength_type, entropy, threshold_config, composite_config
-    #     Build standardized diagnostics from GPU computation.
 
-    #     sims_block: torch.Tensor (S, B) [device]
-    #     mask:       torch.BoolTensor (S, B) or None
-    #     scores:     np.ndarray (B,)   # already on CPU
-    #     strength:   np.ndarray (B,)   # already on CPU
-    #     entropy:    torch.Tensor (B,) or None
-    #     """
-    #     import torch
-
-    #     S, B = sims_block.shape
-    #     device = sims_block.device
-
-    #     # If no mask, treat as all-selected
-    #     if mask is None:
-    #         mask = torch.ones_like(sims_block, dtype=torch.bool, device=device)
-
-    #     # ---- Compute per-item summaries ON DEVICE (vectorized) ----
-    #     # counts
-    #     sel_count = mask.sum(dim=0)                                  # (B,)
-
-    #     # all-segment stats
-    #     sims_all_max  = sims_block.max(dim=0).values                 # (B,)
-    #     sims_all_mean = sims_block.mean(dim=0)                       # (B,)
-    #     sims_all_std  = sims_block.std(dim=0, unbiased=False)        # (B,)
-
-    #     # selected-only stats
-    #     sims_masked   = sims_block.masked_fill(~mask, 0.0)           # (S,B)
-    #     sel_cnt_safe  = sel_count.clamp_min(1)
-
-    #     sims_sel_sum  = sims_masked.sum(dim=0)                       # (B,)
-    #     sims_sel_mean = sims_sel_sum / sel_cnt_safe                  # (B,)
-
-    #     sims_sq_sum   = (sims_masked * sims_masked).sum(dim=0)       # (B,)
-    #     ex2           = sims_sq_sum / sel_cnt_safe                   # (B,)
-    #     var_sel       = (ex2 - sims_sel_mean * sims_sel_mean).clamp_min(0.0)
-    #     sims_sel_std  = var_sel.sqrt()                                # (B,)
-
-    #     sims_sel_max  = sims_block.masked_fill(~mask, -1e9).max(dim=0).values
-
-    #     # entropy may already be computed in scorer (preferred); normalize here
-    #     # if entropy is not None and torch.is_tensor(entropy):
-    #     #     entropy_vec = entropy
-    #     # else:
-    #     #     entropy_vec = None
-
-    #     # ---- Move only the SMALL vectors once to CPU -> lists ----
-    #     diag = {
-    #         # counts
-    #         "n_total": S,                                           # scalar (same for all items)
-    #         "n_selected": sel_count.int().cpu().tolist(),           # list[int], len B
-
-    #         # similarity stats (lists of length B)
-    #         "sims_all_max":  sims_all_max.cpu().tolist(),
-    #         "sims_all_mean": sims_all_mean.cpu().tolist(),
-    #         "sims_all_std":  sims_all_std.cpu().tolist(),
-    #         "sims_sel_max":  sims_sel_max.cpu().tolist(),
-    #         "sims_sel_mean": sims_sel_mean.cpu().tolist(),
-    #         "sims_sel_std":  sims_sel_std.cpu().tolist(),
-
-    #         # strength & scorer meta
-    #         # "strength_sim_mean": strength.tolist() if hasattr(strength, "tolist") else list(strength),
-    #         # "strength_entropy": (entropy_vec.cpu().tolist() if entropy_vec is not None else None),
-    #         # "strength_type": strength_type,
-
-    #         # config info (strings/scalars)
-    #         "selector_type": threshold_config.method,
-    #         "scorer_method": composite_config.method,
-
-    #         # method params (already resolved defaults in your __post_init__)
-    #         "threshold_value": getattr(threshold_config, "threshold", None),
-    #         "k_used": getattr(threshold_config, "k", None),
-    #         "q_used": getattr(threshold_config, "q", None),
-    #         "p_used": getattr(threshold_config, "p", None),
-    #         "frac_used": getattr(threshold_config, "frac", None),
-    #         "zmin_used": getattr(threshold_config, "zmin", None),
-    #     }
-
-    #     return diag
     
     # ============================================================================
     # GPU Scorers
@@ -531,16 +444,22 @@ class Processor:
     def _init_sentiment_analyzer(self, method: str, device: str):
         """Initialize the appropriate sentiment analyzer."""
         if method == 'vader':
+            # keeping vader as a baseline; and since safety report context is unique,
+            # the transformer models may not handle it well
             from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
             return SentimentIntensityAnalyzer()
         
-        elif method in ['roberta', 'distilbert', 'finbert']:
+        elif method in ['roberta', 'distilbert', 'finbert','siebert','nlptown']:
             from transformers import pipeline, AutoTokenizer, AutoModelForSequenceClassification
 
             model_map = {
+                # initial models chosen, now likely outdated
                 'roberta': 'cardiffnlp/twitter-roberta-base-sentiment-latest',
                 'distilbert': 'distilbert-base-uncased-finetuned-sst-2-english',
-                'finbert': 'ProsusAI/finbert'
+                'finbert': 'ProsusAI/finbert',
+                # newer models added feb 2026
+                'siebert': 'siebert/sentiment-roberta-large-english',
+                # 'nlptown': 'nlptown/bert-base-multilingual-uncased-sentiment'
             }
             tok = AutoTokenizer.from_pretrained(model_map[method])
             mdl = AutoModelForSequenceClassification.from_pretrained(model_map[method])

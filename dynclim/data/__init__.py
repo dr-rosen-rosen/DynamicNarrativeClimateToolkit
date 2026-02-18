@@ -8,3 +8,10 @@ from dynclim.data.database import (
 from .rail_data_pipeline import (
     RailDataPipeline
 )
+from .healthcare_data_pipeline import (
+    HealthcareDataPipeline
+)
+
+from . nrc_data_pipeline import (
+    NRCDataPipeline
+)

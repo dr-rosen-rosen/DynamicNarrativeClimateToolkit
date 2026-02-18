@@ -364,7 +364,7 @@ class ExperimentRunner:
         # Define all possible configurations
         all_segmentation_configs = [
             SegmentationConfig(method='sentence', min_length=5, backend='auto'),
-            SegmentationConfig(method='sentence', min_length=10, backend='auto'),
+            # SegmentationConfig(method='sentence', min_length=10, backend='auto'),
             # SegmentationConfig(method='clause', min_length=5),
             # SegmentationConfig(method='clause', min_length=10)
             # SegmentationConfig(method='sliding_window', window_size=50, overlap=25, min_length=10),
@@ -379,8 +379,8 @@ class ExperimentRunner:
 
             # --- Adaptive (median + λ·MAD) ---
             # ThresholdConfig(method='adaptive'),                       # uses defaults (λ=0.5)
-            ThresholdConfig(method='adaptive', lambda_=0.25),
-            ThresholdConfig(method='adaptive', lambda_=0.5),
+            # ThresholdConfig(method='adaptive', lambda_=0.25),
+            # ThresholdConfig(method='adaptive', lambda_=0.5)
 
             # --- Quantile (robust, scale-free) ---
             # ThresholdConfig(method='quantile', q=0.5),
@@ -408,22 +408,22 @@ class ExperimentRunner:
 
             # --- Softmax attention (temperature τ) ---
             CompositeConfig(method='attention_weight', temperature=0.15, apply_over="post_threshold"),
-            CompositeConfig(method='attention_weight', temperature=0.25, apply_over="post_threshold"),
-            CompositeConfig(method='attention_weight', temperature=0.50, apply_over="post_threshold"),
+            # CompositeConfig(method='attention_weight', temperature=0.25, apply_over="post_threshold"),
+            # CompositeConfig(method='attention_weight', temperature=0.50, apply_over="post_threshold"),
             CompositeConfig(method='attention_weight', temperature=1.00, apply_over="post_threshold"),
             CompositeConfig(method='attention_weight', temperature=0.15, apply_over="all"),
-            CompositeConfig(method='attention_weight', temperature=0.25, apply_over="all"),
-            CompositeConfig(method='attention_weight', temperature=0.50, apply_over="all"),
+            # CompositeConfig(method='attention_weight', temperature=0.25, apply_over="all"),
+            # CompositeConfig(method='attention_weight', temperature=0.50, apply_over="all"),
             CompositeConfig(method='attention_weight', temperature=1.00, apply_over="all"),
 
             # --- Power-law attention (exponent p) ---
             CompositeConfig(method='power_attention', power=0.5, apply_over="post_threshold"),
-            CompositeConfig(method='power_attention', power=1.0, apply_over="post_threshold"),
-            CompositeConfig(method='power_attention', power=1.5, apply_over="post_threshold"),
+            # CompositeConfig(method='power_attention', power=1.0, apply_over="post_threshold"),
+            # CompositeConfig(method='power_attention', power=1.5, apply_over="post_threshold"),
             CompositeConfig(method='power_attention', power=2.0, apply_over="post_threshold"),
             CompositeConfig(method='power_attention', power=0.5, apply_over="all"),
-            CompositeConfig(method='power_attention', power=1.0, apply_over="all"),
-            CompositeConfig(method='power_attention', power=1.5, apply_over="all"),
+            # CompositeConfig(method='power_attention', power=1.0, apply_over="all"),
+            # CompositeConfig(method='power_attention', power=1.5, apply_over="all"),
             CompositeConfig(method='power_attention', power=2.0, apply_over="all"),
 
             # --- Soft-over-all attention (for sensitivity runs) ---
@@ -838,7 +838,8 @@ class ExperimentRunner:
         
         if self.use_caching:
             print("\n📊 Final Cache Statistics:")
-            self.processor.print_cache_report()
+            if self.processor is not None:
+                self.processor.print_cache_report()
         
         results_df = pd.DataFrame(results)
         self.results.append(results_df)
