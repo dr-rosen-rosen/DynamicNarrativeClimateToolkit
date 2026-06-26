@@ -34,6 +34,7 @@ fields parsed here:
     c74   public killed                                  → (sum component)
     c76   total fatalities (from source)                 → total_fatalities
     c250  total injuries (from source)                   → total_injuries
+    c98   aircraft damage code (D/S/M/N/U)               → aircraft_damage
 
 Era 1 (pre-1975) and Era 2 (1975-2026) share the same schema. No per-era
 standardization needed — single read path.
@@ -43,6 +44,8 @@ Output schema:
     event_type, far_part, state,
     airport_id, on_airport (bool), apt_dist_nm,
     n_persons_onboard, total_fatalities, total_injuries,
+    aircraft_damage (none/minor/substantial/destroyed/unknown),
+    substantial_damage (0/1 = substantial or destroyed),
     plus optional joined airport metadata: airport_name, airport_city,
     airport_state_lookup, icao
 
@@ -157,6 +160,23 @@ def _classify_event_type(c1: pd.Series) -> pd.Series:
     return s.where(s.isin(["a", "i"]), other="other") \
             .map({"a": "accident", "i": "incident"}) \
             .fillna("other")
+
+
+# c98 aircraft-damage code (single char). Present for BOTH accident and incident
+# rows in the A-files. Blank / "U" / unrecognised -> "unknown".
+AIRCRAFT_DAMAGE_MAP = {
+    "D": "destroyed",
+    "S": "substantial",
+    "M": "minor",
+    "N": "none",
+    "U": "unknown",
+}
+
+
+def _classify_aircraft_damage(c98: pd.Series) -> pd.Series:
+    """Map the c98 damage code to a tidy label; unmapped/blank -> 'unknown'."""
+    s = c98.astype(str).str.strip().str.upper()
+    return s.map(AIRCRAFT_DAMAGE_MAP).fillna("unknown")
 
 
 # =============================================================================
@@ -322,6 +342,18 @@ class AIDSDataPipeline:
         )
         out["total_injuries"] = c250.fillna(comp_inj).astype(int)
 
+        # --- Aircraft damage (c98: D/S/M/N/U; blank/other -> "unknown") ---
+        # Available for both accident and incident rows. `substantial_damage`
+        # flags hull-consequential events (substantial OR destroyed) — used by
+        # the detectability ladder to separate property-damage events from the
+        # zero-harm discretionary reporting tier.
+        out["aircraft_damage"] = _classify_aircraft_damage(
+            raw.get("c98", pd.Series(dtype=str))
+        )
+        out["substantial_damage"] = (
+            out["aircraft_damage"].isin(["substantial", "destroyed"]).astype(int)
+        )
+
         # --- Provenance ---
         out["source_zip"] = raw.get("__source_zip", pd.Series(dtype=str)).values
 
@@ -414,6 +446,10 @@ class AIDSDataPipeline:
                      f"{df['airport_id'].nunique(dropna=True):,}")
         lines.append(f"Total fatalities: {df['total_fatalities'].sum():,}")
         lines.append(f"Total injuries:   {df['total_injuries'].sum():,}")
+        if "aircraft_damage" in df.columns:
+            lines.append("Aircraft damage:")
+            for k, v in df["aircraft_damage"].value_counts().items():
+                lines.append(f"  {k}: {v:,}")
         return "\n".join(lines)
 
 
