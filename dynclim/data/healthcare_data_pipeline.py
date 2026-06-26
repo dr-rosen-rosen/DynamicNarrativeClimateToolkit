@@ -128,6 +128,15 @@ class HeroConfig:
     min_narrative_words: int = 5
     min_narrative_chars: int = 20
 
+    # --- Excel multi-sheet handling ---
+    # When True, read and concatenate ALL worksheets in an .xlsx workbook
+    # (e.g. one sheet per year). When False (default), only the first sheet
+    # is read, preserving prior behavior.
+    all_sheets: bool = False
+    # Name of the provenance column added when all_sheets is True; records the
+    # source worksheet name (e.g. the year) each row came from.
+    source_sheet_col: str = "source_sheet"
+
     # --- Output ---
     output_format: str = "parquet"  # parquet, csv, or feather
 
@@ -278,7 +287,34 @@ class HealthcareDataPipeline:
         # --- Read file ---
         suffix = path.suffix.lower()
         if suffix in (".xlsx", ".xls"):
-            df = pd.read_excel(path, engine="openpyxl" if suffix == ".xlsx" else None)
+            engine = "openpyxl" if suffix == ".xlsx" else None
+            if self.config.all_sheets:
+                # Read every worksheet (one per year) and append them.
+                sheets: Dict[str, pd.DataFrame] = pd.read_excel(
+                    path, sheet_name=None, engine=engine
+                )
+                logger.info(
+                    f"Reading all {len(sheets)} worksheet(s): {list(sheets.keys())}"
+                )
+                # Flag column-set drift across sheets so silent NaN-fills are visible.
+                ref_name, ref_df = next(iter(sheets.items()))
+                ref_cols = set(ref_df.columns)
+                for name, sheet_df in sheets.items():
+                    diff = ref_cols.symmetric_difference(sheet_df.columns)
+                    if diff:
+                        logger.warning(
+                            f"Sheet '{name}' columns differ from '{ref_name}': "
+                            f"{sorted(diff)}. Concatenation will union columns "
+                            f"and fill gaps with NaN."
+                        )
+                frames = []
+                for name, sheet_df in sheets.items():
+                    sheet_df = sheet_df.copy()
+                    sheet_df[self.config.source_sheet_col] = name
+                    frames.append(sheet_df)
+                df = pd.concat(frames, ignore_index=True)
+            else:
+                df = pd.read_excel(path, engine=engine)
         elif suffix == ".csv":
             df = pd.read_csv(path, low_memory=False)
         elif suffix == ".tsv":
@@ -679,6 +715,12 @@ Examples:
     # Output
     parser.add_argument("--output", default="data/processed/hero", help="Output directory")
     parser.add_argument("--format", default="parquet", choices=["parquet", "csv", "feather"])
+    parser.add_argument(
+        "--all-sheets",
+        action="store_true",
+        help="Read and append ALL worksheets in an .xlsx (e.g. one sheet per year). "
+        "Adds a 'source_sheet' column. Default reads only the first sheet.",
+    )
 
     # Column name overrides
     parser.add_argument("--event-id-col", default=None, help="Event ID column name")
@@ -703,6 +745,7 @@ Examples:
     config = HeroConfig(output_format=args.format)
     config.min_narrative_words = args.min_words
     config.min_narrative_chars = args.min_chars
+    config.all_sheets = args.all_sheets
 
     if args.event_id_col:
         config.event_id_col = args.event_id_col
