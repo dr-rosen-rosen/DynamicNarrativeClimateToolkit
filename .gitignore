@@ -216,4 +216,4 @@ __marimo__/
 *.xls
 *.json
 *.pkl
-/dynclim/notebooks/checkpoints/
+/dynclim/notebooks/checkpoints/seg_cache.sqlite
