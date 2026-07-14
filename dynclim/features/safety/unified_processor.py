@@ -158,7 +158,7 @@ class Processor:
                  cache_embeddings: bool = True,
                  cache_segments: bool = True,
                  cache_sentiments: bool = True,
-                 normalize_segments: bool = True,
+                 normalize_segments: bool = False,
                  # Acceleration options
                  use_acceleration: bool = True,
                  device_pref: str = 'auto',
@@ -173,7 +173,12 @@ class Processor:
             embedding_model_name: Name of sentence transformer model
             cache_embeddings: Enable segment-level embedding cache
             cache_segments: Enable text segmentation cache
-            normalize_segments: Normalize segments before caching (improves hit rate)
+            normalize_segments: Case-fold/whitespace-normalize segment cache keys.
+                MUST stay False for scoring: VADER and cased transformer
+                sentiment models are case-sensitive, so a normalized key lets
+                one case variant of a sentence inherit another's cached
+                sentiment/embedding (found contaminating ~1% of msha reports
+                in the 2026-06 store; see validate_store_rerun.py).
             use_acceleration: Enable GPU/MPS acceleration
             device: Device for computation ('auto', 'cuda', 'mps', 'cpu')
             batch_size: Batch size for embedding computation
