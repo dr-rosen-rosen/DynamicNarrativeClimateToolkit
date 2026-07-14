@@ -197,16 +197,19 @@ class NRCDataPipeline:
         self,
         event_nums_file: Union[str, Path],
         resume: bool = True,
-        save_intermediate: bool = True
+        save_intermediate: bool = True,
+        retry_failed: bool = False
     ) -> pd.DataFrame:
         """
         Scrape event details from LER Search.
-        
+
         Args:
             event_nums_file: Excel file with event numbers (from NRC search export)
             resume: Whether to resume from checkpoint
             save_intermediate: Whether to save checkpoint during scraping
-            
+            retry_failed: Re-attempt events in the checkpoint's failed set
+                (otherwise resume skips them forever)
+
         Returns:
             DataFrame with scraped events
         """
@@ -235,8 +238,12 @@ class NRCDataPipeline:
                        f"{len(self._checkpoint['failed']):,} failed")
         
         # Filter to unprocessed
-        to_scrape = [n for n in event_nums 
-                     if n not in self._checkpoint['processed'] 
+        if retry_failed and self._checkpoint['failed']:
+            logger.info(f"Retrying {len(self._checkpoint['failed']):,} "
+                        f"previously failed events")
+            self._checkpoint['failed'] = set()
+        to_scrape = [n for n in event_nums
+                     if n not in self._checkpoint['processed']
                      and n not in self._checkpoint['failed']]
         logger.info(f"Scraping {len(to_scrape):,} remaining events")
         
@@ -362,7 +369,12 @@ class NRCDataPipeline:
         for field_name, element_id in self.config.field_ids.items():
             element = soup.find(id=element_id)
             if element:
-                event_data[field_name] = element.text.strip()
+                # get_text with a separator: bare element.text concatenates
+                # block elements and <br> with NO separator, fusing words
+                # across boundaries ("NOZZLESTHE", title glued to body).
+                # Collapse whitespace runs so line-wraps don't survive either.
+                text = element.get_text(separator=" ")
+                event_data[field_name] = " ".join(text.split())
             else:
                 event_data[field_name] = None
         
@@ -428,15 +440,16 @@ class NRCDataPipeline:
                     except:
                         continue
         
-        # 3. Clean event text
+        # 3. Clean event text — case is PRESERVED (VADER and cased
+        # transformer models are case-sensitive; spaCy syntactic features
+        # need true casing; see project memory nrc-text-quality)
         if 'event_text' in df.columns:
-            df['event_text'] = df['event_text'].astype(str).str.lower().str.strip()
+            df['event_text'] = df['event_text'].astype(str).str.strip()
             
-            # Filter empty/invalid
+            # Filter empty/invalid (case-insensitive now that case is kept)
             df = df[df['event_text'].notna()]
             df = df[df['event_text'] != '']
-            df = df[df['event_text'] != 'none']
-            df = df[df['event_text'] != 'nan']
+            df = df[~df['event_text'].str.lower().isin(['none', 'nan'])]
             
             # Filter short
             df['_word_count'] = df['event_text'].str.split().str.len()
