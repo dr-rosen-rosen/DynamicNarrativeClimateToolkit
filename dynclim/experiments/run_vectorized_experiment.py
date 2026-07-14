@@ -408,6 +408,12 @@ def main():
                     help="comma-separated sentiment method list")
     ap.add_argument("--full-grid", action="store_true",
                     help="historical 3x3x15=135-config production grid")
+    ap.add_argument("--eid-col", default="eid",
+                    help="report-id column in the events parquet "
+                         "(nrc: event_num)")
+    ap.add_argument("--narrative-col", default="narrative",
+                    help="narrative column in the events parquet "
+                         "(nrc: event_text)")
     ap.add_argument("--limit", type=int, default=None)
     args = ap.parse_args()
 
@@ -426,7 +432,10 @@ def main():
     cdir = root / "_corpus"
     cdir.mkdir(parents=True, exist_ok=True)
 
-    events = pd.read_parquet(args.events, columns=["eid", "narrative"])
+    events = pd.read_parquet(args.events,
+                             columns=[args.eid_col, args.narrative_col])
+    events = events.rename(columns={args.eid_col: "eid",
+                                    args.narrative_col: "narrative"})
     if args.limit:
         events = events.head(args.limit)
     eids = events["eid"].astype(str).tolist()
