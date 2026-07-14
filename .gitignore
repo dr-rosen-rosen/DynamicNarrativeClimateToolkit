@@ -216,4 +216,8 @@ __marimo__/
 *.xls
 *.json
 *.pkl
-/dynclim/notebooks/checkpoints/seg_cache.sqlite
+/dynclim/notebooks/checkpoints/
+
+# Local working files (session handoffs, segment caches)
+handoff_*.md
+seg_cache.sqlite
