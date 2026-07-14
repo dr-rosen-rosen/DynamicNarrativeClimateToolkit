@@ -70,19 +70,15 @@ def case_collision_eligible_ids(new_store: Path) -> set:
     somewhere in the corpus — the population the legacy path's normalized
     cache keys could contaminate. Row i of a vectorized store's results
     corresponds to corpus row i, which links report_id to segments."""
-    import gzip
     cdir = new_store / "_corpus"
     if not cdir.exists():
         raise SystemExit(f"{new_store}: no _corpus/ — "
                          f"--explain-case-collisions needs a vectorized store")
-    lens = np.concatenate([np.load(p)
-                           for p in sorted(cdir.glob("seg_len_*.npy"))])
-    idx = np.concatenate([np.load(p)
-                          for p in sorted(cdir.glob("seg_idx_*.npy"))])
-    uniques = []
-    for p in sorted(cdir.glob("seg_uniq_*.txt.gz")):
-        with gzip.open(p, "rt", encoding="utf-8") as fh:
-            uniques.extend(line.rstrip("\n") for line in fh)
+    import sys as _sys
+    _sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+    from dynclim.experiments.run_vectorized_experiment import (
+        load_corpus_segments)
+    lens, idx, uniques = load_corpus_segments(cdir)
     norm = {}
     for i, s in enumerate(uniques):
         norm.setdefault(" ".join(s.lower().strip().split()), []).append(i)

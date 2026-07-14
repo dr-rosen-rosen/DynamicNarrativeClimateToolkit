@@ -81,6 +81,36 @@ def _slug(name: str) -> str:
     return name.replace("/", "_").replace(":", "-")
 
 
+# seg_uniq files are newline-delimited, but segments can contain embedded
+# newlines (1,218 rail narratives do) — an unescaped write splits into extra
+# lines on read, shifting every later unique id and silently mis-mapping
+# segments to reports. v2 corpora escape on write; the marker file gates
+# unescaping so v1 corpora (msha/osha, verified newline-free) read unchanged.
+SEG_FORMAT_MARKER = "seg_format_v2"
+
+
+def _escape_seg(s: str) -> str:
+    return (s.replace("\\", "\\\\").replace("\n", "\\n")
+             .replace("\r", "\\r"))
+
+
+def _unescape_seg(s: str) -> str:
+    out, i, n = [], 0, len(s)
+    while i < n:
+        c = s[i]
+        if c == "\\" and i + 1 < n:
+            nxt = s[i + 1]
+            if nxt == "n":
+                out.append("\n"); i += 2; continue
+            if nxt == "r":
+                out.append("\r"); i += 2; continue
+            if nxt == "\\":
+                out.append("\\"); i += 2; continue
+        out.append(c)
+        i += 1
+    return "".join(out)
+
+
 def _emb_path(cdir: Path, model: str) -> Path:
     p = cdir / f"embs_{_slug(model)}.f32.npy"
     if not p.exists() and model == "all-MiniLM-L6-v2" \
@@ -159,11 +189,13 @@ def phase_segment(proc, seg_cfg, events, cdir: Path):
         return
 
     # Rebuild the unique-segment dict from prior chunks (resume support)
+    v2 = (cdir / SEG_FORMAT_MARKER).exists()
     uniq = {}
     for p in sorted(cdir.glob("seg_uniq_*.txt.gz")):
         with gzip.open(p, "rt", encoding="utf-8") as fh:
             for line in fh:
-                uniq[line.rstrip("\n")] = len(uniq)
+                s = line.rstrip("\n")
+                uniq[_unescape_seg(s) if v2 else s] = len(uniq)
     log.info("[S] resume at chunk %d/%d (%d uniques so far)",
              start_chunk, n_chunks, len(uniq))
 
@@ -183,9 +215,11 @@ def phase_segment(proc, seg_cfg, events, cdir: Path):
             lens.append(len(segs))
         np.save(cdir / f"seg_len_{ci:04d}.npy",
                 np.asarray(lens, dtype=np.int32))
+        (cdir / SEG_FORMAT_MARKER).touch()
         with gzip.open(cdir / f"seg_uniq_{ci:04d}.txt.gz", "wt",
                        encoding="utf-8") as fh:
-            fh.write("\n".join(new_uniq) + ("\n" if new_uniq else ""))
+            fh.write("\n".join(_escape_seg(s) for s in new_uniq)
+                     + ("\n" if new_uniq else ""))
         # write idx last: its presence marks the chunk complete
         np.save(cdir / f"seg_idx_{ci:04d}.npy",
                 np.asarray(idx_rows, dtype=np.int64))
@@ -198,11 +232,17 @@ def phase_segment(proc, seg_cfg, events, cdir: Path):
 def load_corpus_segments(cdir: Path):
     lens = np.concatenate([np.load(p) for p in sorted(cdir.glob("seg_len_*.npy"))])
     idx = np.concatenate([np.load(p) for p in sorted(cdir.glob("seg_idx_*.npy"))])
+    v2 = (cdir / SEG_FORMAT_MARKER).exists()
     uniques = []
     for p in sorted(cdir.glob("seg_uniq_*.txt.gz")):
         with gzip.open(p, "rt", encoding="utf-8") as fh:
-            uniques.extend(line.rstrip("\n") for line in fh)
+            uniques.extend(_unescape_seg(line.rstrip("\n")) if v2
+                           else line.rstrip("\n") for line in fh)
     assert lens.sum() == len(idx), "segment index/length mismatch"
+    assert len(idx) == 0 or idx.max() + 1 == len(uniques), (
+        f"unique-id space ({idx.max() + 1}) != uniques read "
+        f"({len(uniques)}): seg_uniq round-trip corruption "
+        f"(embedded newlines in a pre-v2 corpus?)")
     return lens, idx, uniques
 
 
