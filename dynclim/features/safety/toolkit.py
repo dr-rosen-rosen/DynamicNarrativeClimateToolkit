@@ -1362,7 +1362,9 @@ class PowerAttentionScorer(CompositeScorer):
             valid = torch.ones_like(s, dtype=torch.bool, device=s.device)
 
         # Optional quantile prefilter per column
-        if self.attn_quantile is not None:
+        # q <= 0.0 is a no-op by spec (threshold at the column min keeps every
+        # valid entry), so skip the quantile entirely rather than compute it.
+        if self.attn_quantile is not None and float(self.attn_quantile) > 0.0:
             q = float(self.attn_quantile)
             # torch.quantile operates over valid entries by masking; do per column
             # Build a per-column threshold using masked quantile
@@ -1370,6 +1372,10 @@ class PowerAttentionScorer(CompositeScorer):
             s_masked = s.masked_fill(~valid, float("nan"))  # NaNs ignored by nanquantile
             # Compute column-wise quantile (keepdim for broadcasting)
             # torch.nanquantile available in newer versions; if not, emulate via sort/dropna.
+            # NEVER on MPS: torch<=2.0 nanquantile silently returns garbage for
+            # multi-column MPS tensors (see test_scoring_equivalence.py).
+            if s_masked.device.type == "mps":
+                s_masked = s_masked.cpu()
             try:
                 thr = torch.nanquantile(s_masked, q, dim=0, keepdim=True)
             except Exception:
@@ -1380,11 +1386,12 @@ class PowerAttentionScorer(CompositeScorer):
                 # Index = floor(q * (count-1))
                 idx = torch.clamp((q * (counts - 1).float()).floor().long(), min=0)
                 # Gather threshold; when count==0, set thr to +inf so nothing passes
-                arangeB = torch.arange(B, device=s.device)
-                thr_vals = torch.full((B,), float("inf"), device=s.device)
+                arangeB = torch.arange(B, device=s_masked.device)
+                thr_vals = torch.full((B,), float("inf"), device=s_masked.device)
                 nonzero = counts > 0
                 thr_vals[nonzero] = sorted_s[idx[nonzero], arangeB[nonzero]]
                 thr = thr_vals.view(1, B)
+            thr = thr.to(s.device)
 
             attn_mask = valid & torch.isfinite(s) & (s >= thr)
         else:

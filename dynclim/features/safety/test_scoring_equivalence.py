@@ -6,17 +6,19 @@ Verifies that vectorized_scorer reproduces the exact outputs of the
 paper-1-lineage per-report scoring path (captured in scoring_goldens/ by
 gen_scoring_goldens.py) on 309 fixed reports x 15 production configs.
 
-IMPORTANT — power_attention arms are excluded from the comparison.
-Investigation (2026-07-10) found that torch 2.0.1's `nanquantile` returns
-incorrect values on MPS for any multi-column tensor. PowerAttentionScorer's
-GPU path uses it for the attn_quantile prefilter (a q=0.0 no-op by spec),
-so every power_attention config scored on this machine's MPS applied an
-arbitrary, garbage per-item similarity threshold before weighting. The
-goldens faithfully capture that corrupted behavior; the vectorized scorer
-implements the SPEC (q=0.0 keeps all selected segments) and therefore
-deliberately diverges on those arms. The nine weighted_average /
-attention_weight configs are compared exactly and must match bit-for-bit
-(rtol/atol here allow only float-noise at top-k tie boundaries).
+History — power_attention arms were originally excluded from the
+comparison. Investigation (2026-07-10) found that torch 2.0.1's
+`nanquantile` returns incorrect values on MPS for any multi-column tensor.
+PowerAttentionScorer's GPU path used it for the attn_quantile prefilter (a
+q=0.0 no-op by spec), so every power_attention config scored on this
+machine's MPS applied an arbitrary, garbage per-item similarity threshold
+before weighting. Fixed 2026-07-13: compute_composite_gpu short-circuits
+q<=0 and computes any real quantile on CPU, so the legacy path now
+implements the SPEC on every device. The goldens were regenerated against
+the fixed path and ALL 15 configs are compared (rtol/atol allow only
+float-noise at top-k tie boundaries). Pre-fix goldens capturing the
+corrupted power behavior remain in git history and at the
+`paper1-submission` tag.
 
 Run:
     .dynClimVenv/bin/python dynclim/features/safety/test_scoring_equivalence.py
@@ -64,9 +66,7 @@ def test_vectorized_matches_goldens():
     from dynclim.features.safety.vectorized_scorer import (
         prepare_corpus, score_configs)
 
-    # power_attention arms excluded — see module docstring (MPS nanquantile
-    # bug corrupts the golden values for those configs).
-    grid = [g for g in build_config_grid() if "pow_" not in g[0]]
+    grid = build_config_grid()
     labels = {g[0] for g in grid}
 
     golden = pd.read_parquet(GOLD_DIR / "goldens.parquet")

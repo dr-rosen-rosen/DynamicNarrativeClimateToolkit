@@ -8,6 +8,11 @@ re-implementation can be verified to reproduce them. Run ONCE on the
 unmodified scoring code; the goldens are then committed and treated as
 frozen truth.
 
+Regenerated 2026-07-13 after the MPS nanquantile fix in
+PowerAttentionScorer.compute_composite_gpu: the goldens now capture the
+spec-correct power_attention behavior on every device (pre-fix goldens are
+in git history / `paper1-submission` tag).
+
 Sample = 300 real OSHA ITA narratives (fixed seed; text saved WITH the
 goldens so regeneration never depends on the events parquet) + synthetic
 edge cases (empty, single-token, punctuation-only, unicode, duplicated
