@@ -20,21 +20,32 @@ Each phase skips work whose artifacts already exist; killing and
 relaunching is safe at any point.
 
 Config grid: the 15-combo production axis (top_k k3/k5 x 5 post_threshold
-composites + sentinel x 5 apply_over='all' composites) for ONE embedding
-model + ONE sentiment method per invocation. power_attention arms here use
-the SPEC semantics (attn_quantile 0.0 = no-op) — historical MPS stores'
-power arms are corrupted by the torch-2.0.1 nanquantile bug (see
+composites + sentinel x 5 apply_over='all' composites) crossed with every
+requested (embedding, sentiment) pair. --embedding/--sentiment take
+comma-separated lists; --full-grid is shorthand for the historical
+3 x 3 x 15 = 135-config production grid (as in msha_06-01-2026). The
+registry is built ONCE over the full cross, so config_ids are identical
+to the historical ExperimentRunner stores (ids are assigned by sorted
+signature, verified 15/15 against osha/msha registries). power_attention
+arms use the SPEC semantics (attn_quantile 0.0 = no-op) — historical MPS
+stores' power arms are corrupted by the torch-2.0.1 nanquantile bug (see
 test_scoring_equivalence.py).
+
+Segmentation is shared across pairs; embeddings/sentiments are cached per
+model/method in _corpus/ (embs_<slug>.f32.npy / sents_<slug>.f32.npy,
+falling back to the legacy embs.f32.npy / sents.f32.npy written by the
+single-pair driver for MiniLM / vader).
 
 Run (by file path, from the directory whose checkpoints/ you want):
     cd dynclim/notebooks && \\
     ../../.dynClimVenv/bin/python ../experiments/run_vectorized_experiment.py \\
-        --events ../data/processed/osha/events.parquet \\
-        --experiment osha_2026-07-10
+        --events ../data/processed/msha/events.parquet \\
+        --experiment msha_2026-07-13 --full-grid
 """
 from __future__ import annotations
 
 import argparse
+import gc
 import gzip
 import importlib.util
 import json
@@ -50,6 +61,7 @@ os.environ.setdefault("PYTORCH_ENABLE_MPS_FALLBACK", "1")
 import numpy as np
 import pandas as pd
 import torch
+import torch.mps
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s - %(levelname)s - %(message)s")
@@ -59,6 +71,30 @@ REPO = Path(__file__).resolve().parents[2]
 SEG_CHUNK = 100_000
 EMB_BATCH = 200_000
 MAX_CELLS = 200_000_000
+
+# The historical production grid (msha_06-01-2026 and siblings)
+FULL_EMBEDDINGS = ["all-MiniLM-L6-v2", "all-roberta-large-v1", "BAAI/bge-m3"]
+FULL_SENTIMENTS = ["vader", "roberta", "siebert"]
+
+
+def _slug(name: str) -> str:
+    return name.replace("/", "_").replace(":", "-")
+
+
+def _emb_path(cdir: Path, model: str) -> Path:
+    p = cdir / f"embs_{_slug(model)}.f32.npy"
+    if not p.exists() and model == "all-MiniLM-L6-v2" \
+            and (cdir / "embs.f32.npy").exists():
+        return cdir / "embs.f32.npy"     # legacy single-pair layout
+    return p
+
+
+def _sent_path(cdir: Path, method: str) -> Path:
+    p = cdir / f"sents_{_slug(method)}.f32.npy"
+    if not p.exists() and method == "vader" \
+            and (cdir / "sents.f32.npy").exists():
+        return cdir / "sents.f32.npy"    # legacy single-pair layout
+    return p
 
 
 def _grid():
@@ -174,8 +210,7 @@ def load_corpus_segments(cdir: Path):
 # Phase E / V — unique-segment embeddings + sentiment (chunked, resumable)
 # ---------------------------------------------------------------------------
 
-def phase_embed(proc, uniques, cdir: Path) -> np.ndarray:
-    out = cdir / "embs.f32.npy"
+def phase_embed(proc, uniques, out: Path) -> np.ndarray:
     if out.exists():
         return np.load(out, mmap_mode="r")
     import torch.nn.functional as F
@@ -192,11 +227,11 @@ def phase_embed(proc, uniques, cdir: Path) -> np.ndarray:
                  len(part) / (time.time() - t0))
     embs = np.concatenate(parts) if parts else np.zeros((0, 384), np.float32)
     np.save(out, embs)
-    return embs
+    del embs, parts
+    return np.load(out, mmap_mode="r")
 
 
-def phase_sentiment(proc, uniques, cdir: Path) -> np.ndarray:
-    out = cdir / "sents.f32.npy"
+def phase_sentiment(proc, uniques, out: Path) -> np.ndarray:
     if out.exists():
         return np.load(out)
     proc.cache_sentiments = False
@@ -217,8 +252,23 @@ def phase_sentiment(proc, uniques, cdir: Path) -> np.ndarray:
 # Phase R — score + write ExperimentRunner-compatible store
 # ---------------------------------------------------------------------------
 
+def pair_combos(embedding_model, sentiment_method, seg_cfg):
+    return [{"embedding_model": embedding_model, "segmentation": seg_cfg,
+             "threshold": t, "composite": c, "sentiment_method":
+             sentiment_method} for t, c in _grid()]
+
+
+def pair_done(runner, experiment, registry, combos) -> bool:
+    for combo in combos:
+        cid = runner._config_id_for_combo(registry, combo)
+        _, results_base, _ = runner._paths_for_config(experiment, cid)
+        if not Path(results_base + ".parquet").exists():
+            return False
+    return True
+
+
 def phase_score(proc, runner, experiment, embedding_model, sentiment_method,
-                seg_cfg, eids, lens, idx, embs, sents):
+                seg_cfg, eids, lens, idx, embs, sents, registry):
     from dynclim.experiments.runner import _canon_payload
     from dynclim.features.safety.vectorized_scorer import (
         _attention_composite, _power_composite, _select_topk, _wa_composite)
@@ -230,10 +280,7 @@ def phase_score(proc, runner, experiment, embedding_model, sentiment_method,
     domains = list(proc.domain_definitions.keys())
     dom_masks = {d: np.array([g == d for g in item_domains]) for d in domains}
 
-    combos = [{"embedding_model": embedding_model, "segmentation": seg_cfg,
-               "threshold": t, "composite": c, "sentiment_method":
-               sentiment_method} for t, c in _grid()]
-    registry = runner._build_or_load_registry(experiment, combos)
+    combos = pair_combos(embedding_model, sentiment_method, seg_cfg)
     todo = []
     for combo in combos:
         cid = runner._config_id_for_combo(registry, combo)
@@ -355,8 +402,12 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--events", required=True)
     ap.add_argument("--experiment", required=True)
-    ap.add_argument("--embedding", default="all-MiniLM-L6-v2")
-    ap.add_argument("--sentiment", default="vader")
+    ap.add_argument("--embedding", default="all-MiniLM-L6-v2",
+                    help="comma-separated embedding model list")
+    ap.add_argument("--sentiment", default="vader",
+                    help="comma-separated sentiment method list")
+    ap.add_argument("--full-grid", action="store_true",
+                    help="historical 3x3x15=135-config production grid")
     ap.add_argument("--limit", type=int, default=None)
     args = ap.parse_args()
 
@@ -365,6 +416,12 @@ def main():
     from dynclim.features.safety import SegmentationConfig
     from dynclim.utils import loadDomainsFromYaml
 
+    if args.full_grid:
+        embeddings, sentiments = FULL_EMBEDDINGS, FULL_SENTIMENTS
+    else:
+        embeddings = [s.strip() for s in args.embedding.split(",") if s.strip()]
+        sentiments = [s.strip() for s in args.sentiment.split(",") if s.strip()]
+
     root = Path("checkpoints") / args.experiment
     cdir = root / "_corpus"
     cdir.mkdir(parents=True, exist_ok=True)
@@ -372,28 +429,80 @@ def main():
     events = pd.read_parquet(args.events, columns=["eid", "narrative"])
     if args.limit:
         events = events.head(args.limit)
-    log.info("%d reports | experiment=%s | %s + %s",
-             len(events), args.experiment, args.embedding, args.sentiment)
+    eids = events["eid"].astype(str).tolist()
+    log.info("%d reports | experiment=%s | %d embeddings x %d sentiments "
+             "x 15 = %d configs", len(events), args.experiment,
+             len(embeddings), len(sentiments),
+             len(embeddings) * len(sentiments) * 15)
 
-    proc = _build_processor(args.embedding, args.sentiment,
-                            root / "seg_cache.sqlite")
     seg_cfg = SegmentationConfig(method="sentence", min_length=5,
                                  backend="auto")
 
-    phase_segment(proc, seg_cfg, events, cdir)
-    lens, idx, uniques = load_corpus_segments(cdir)
-    log.info("corpus: %d reports, %d segment slots, %d uniques",
-             len(lens), len(idx), len(uniques))
-    embs = phase_embed(proc, uniques, cdir)
-    sents = phase_sentiment(proc, uniques, cdir)
-
+    # Registry over the FULL cross, built once up front: config_ids are
+    # assigned by sorted signature, so they match historical stores that
+    # used the same grid (e.g. msha_06-01-2026) and never depend on which
+    # pair runs first.
     runner = ExperimentRunner(
         domain_definitions=loadDomainsFromYaml(
             REPO / "config/domains/safety_domains.yaml"),
-        embedding_model_names=[args.embedding])
-    phase_score(proc, runner, args.experiment, args.embedding,
-                args.sentiment, seg_cfg, events["eid"].astype(str).tolist(),
-                lens, idx, embs, sents)
+        embedding_model_names=embeddings)
+    all_combos = [c for emb in embeddings for sent in sentiments
+                  for c in pair_combos(emb, sent, seg_cfg)]
+    reg_path = Path(runner._registry_path(args.experiment))
+    const_path = root / "registry_constants.json"
+    snapshots = {p: p.read_bytes() for p in (reg_path, const_path)
+                 if p.exists()}
+    old_reg = pd.read_csv(reg_path) if reg_path.exists() else None
+    registry = runner._build_or_load_registry(args.experiment, all_combos)
+    if old_reg is not None and (root / "_cfg").exists():
+        # Rebuilding the registry over a different grid reassigns ids by
+        # sorted signature; existing _cfg/<id> dirs would be misattributed.
+        chk = old_reg[["signature", "config_id"]].merge(
+            registry[["signature", "config_id"]], on="signature",
+            how="left", suffixes=("_old", "_new"))
+        moved = chk[chk["config_id_old"] != chk["config_id_new"]]
+        if len(moved):
+            for p, raw in snapshots.items():   # undo the overwrite
+                p.write_bytes(raw)
+            raise SystemExit(
+                f"FATAL: {len(moved)} existing configs would change id under "
+                f"the requested grid (e.g. signature "
+                f"{moved.iloc[0]['signature'][:80]}…: "
+                f"{moved.iloc[0]['config_id_old']} -> "
+                f"{moved.iloc[0]['config_id_new']}). Existing _cfg/ results "
+                f"would be misattributed. Use a fresh --experiment dir, or "
+                f"rerun with the exact grid the store was created with.")
+
+    # Segmentation is model-independent; only build a processor for it if
+    # chunks are actually missing (skips a model load on resume).
+    n_chunks = (len(events) + SEG_CHUNK - 1) // SEG_CHUNK
+    if len(list(cdir.glob("seg_idx_*.npy"))) < n_chunks:
+        proc = _build_processor(embeddings[0], sentiments[0],
+                                root / "seg_cache.sqlite")
+        phase_segment(proc, seg_cfg, events, cdir)
+        del proc
+        gc.collect()
+    lens, idx, uniques = load_corpus_segments(cdir)
+    log.info("corpus: %d reports, %d segment slots, %d uniques",
+             len(lens), len(idx), len(uniques))
+
+    for emb in embeddings:
+        for sent in sentiments:
+            combos = pair_combos(emb, sent, seg_cfg)
+            if pair_done(runner, args.experiment, registry, combos):
+                log.info("=== %s + %s: all 15 configs written, skipping",
+                         emb, sent)
+                continue
+            log.info("=== %s + %s", emb, sent)
+            proc = _build_processor(emb, sent, root / "seg_cache.sqlite")
+            embs = phase_embed(proc, uniques, _emb_path(cdir, emb))
+            sents = phase_sentiment(proc, uniques, _sent_path(cdir, sent))
+            phase_score(proc, runner, args.experiment, emb, sent, seg_cfg,
+                        eids, lens, idx, embs, sents, registry)
+            del proc, embs, sents
+            gc.collect()
+            if torch.backends.mps.is_available():
+                torch.mps.empty_cache()
     log.info("DONE")
 
 
