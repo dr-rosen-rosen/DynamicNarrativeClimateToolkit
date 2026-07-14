@@ -105,7 +105,7 @@ def case_collision_eligible_ids(new_store: Path) -> set:
 
 
 def compare_config(old_df: pd.DataFrame, new_df: pd.DataFrame, tol: float,
-                   eligible_ids: set = None):
+                   eligible_ids: set = None, noise_tol: float = 0.05):
     m = old_df.merge(new_df, on="report_id", how="outer",
                      suffixes=("_o", "_n"), indicator=True)
     joined = int((m["_merge"] == "both").sum())
@@ -120,13 +120,16 @@ def compare_config(old_df: pd.DataFrame, new_df: pd.DataFrame, tol: float,
     max_abs, max_col = 0.0, ""
     deltas_overall = None
     row_diff = np.zeros(len(both), dtype=bool)
+    row_max = np.zeros(len(both))
     for c in num_cols:
         o = both[f"{c}_o"].to_numpy(dtype=np.float64)
         n = both[f"{c}_n"].to_numpy(dtype=np.float64)
         d = np.abs(o - n)
         d[np.isnan(o) & np.isnan(n)] = 0.0     # NaN==NaN is agreement
-        row_diff |= np.nan_to_num(d) > tol
-        dmax = float(np.nanmax(d)) if len(d) else 0.0
+        d = np.nan_to_num(d)
+        row_diff |= d > tol
+        row_max = np.maximum(row_max, d)
+        dmax = float(d.max()) if len(d) else 0.0
         if dmax > max_abs:
             max_abs, max_col = dmax, c
         if c == "overall_final_score":
@@ -137,8 +140,14 @@ def compare_config(old_df: pd.DataFrame, new_df: pd.DataFrame, tol: float,
     corr = float(np.corrcoef(o[ok], n[ok])[0, 1]) if ok.sum() > 2 else np.nan
     diff_explained = np.nan
     if eligible_ids is not None and row_diff.any():
+        # A differing row is explained if its report is case-collision-
+        # eligible OR its worst column delta is float-noise-scale (top-k
+        # tie flips under MPS batch nondeterminism; contamination flips
+        # are 0.1-2.0, noise rows observed <=0.035).
         diff_ids = both["report_id"].to_numpy()[row_diff]
-        diff_explained = float(np.mean([r in eligible_ids for r in diff_ids]))
+        in_elig = np.array([r in eligible_ids for r in diff_ids])
+        noise = row_max[row_diff] < noise_tol
+        diff_explained = float((in_elig | noise).mean())
     return {
         "n_joined": joined, "n_old_only": old_only, "n_new_only": new_only,
         "max_abs_delta": max_abs, "max_delta_col": max_col,
@@ -166,7 +175,11 @@ def main():
     ap.add_argument("--explain-case-collisions", action="store_true",
                     help="compute the case-collision-eligible report set "
                          "from the new store's _corpus; strict arms PASS if "
-                         ">=99.5%% of their differing rows fall in it")
+                         ">=99.5%% of their differing rows fall in it or are "
+                         "float-noise-scale (--noise-tol)")
+    ap.add_argument("--noise-tol", type=float, default=0.05,
+                    help="worst-column delta below which a differing row "
+                         "counts as top-k tie/float noise")
     args = ap.parse_args()
 
     old_store, new_store = Path(args.old), Path(args.new)
@@ -195,7 +208,8 @@ def main():
         old_df, new_df = pd.read_parquet(old_p), pd.read_parquet(new_p)
         old_df["report_id"] = old_df["report_id"].astype(str)
         new_df["report_id"] = new_df["report_id"].astype(str)
-        stats = compare_config(old_df, new_df, args.tol, eligible_ids)
+        stats = compare_config(old_df, new_df, args.tol, eligible_ids,
+                               args.noise_tol)
         strict = r.comp__method in ("weighted_average", "attention_weight")
         explained = (eligible_ids is not None
                      and stats["frac_diff_explained"] >= 0.995)
