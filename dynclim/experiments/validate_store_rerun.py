@@ -65,7 +65,51 @@ def load_registry(store: Path) -> pd.DataFrame:
     return reg
 
 
-def compare_config(old_df: pd.DataFrame, new_df: pd.DataFrame, tol: float):
+def case_collision_eligible_ids(new_store: Path) -> set:
+    """Report ids whose segments have a case/whitespace-variant twin
+    somewhere in the corpus — the population the legacy path's normalized
+    cache keys could contaminate. Row i of a vectorized store's results
+    corresponds to corpus row i, which links report_id to segments."""
+    import gzip
+    cdir = new_store / "_corpus"
+    if not cdir.exists():
+        raise SystemExit(f"{new_store}: no _corpus/ — "
+                         f"--explain-case-collisions needs a vectorized store")
+    lens = np.concatenate([np.load(p)
+                           for p in sorted(cdir.glob("seg_len_*.npy"))])
+    idx = np.concatenate([np.load(p)
+                          for p in sorted(cdir.glob("seg_idx_*.npy"))])
+    uniques = []
+    for p in sorted(cdir.glob("seg_uniq_*.txt.gz")):
+        with gzip.open(p, "rt", encoding="utf-8") as fh:
+            uniques.extend(line.rstrip("\n") for line in fh)
+    norm = {}
+    for i, s in enumerate(uniques):
+        norm.setdefault(" ".join(s.lower().strip().split()), []).append(i)
+    prone = np.zeros(len(uniques), dtype=bool)
+    for ids in norm.values():
+        if len(ids) > 1:
+            prone[ids] = True
+    offsets = np.concatenate([[0], np.cumsum(lens)])
+    eligible = np.array([prone[idx[offsets[r]:offsets[r + 1]]].any()
+                         for r in range(len(lens))])
+
+    first_cfg = sorted((new_store / "_cfg").iterdir(),
+                       key=lambda p: int(p.name))[0]
+    rids = pd.read_parquet(first_cfg / "results.parquet",
+                           columns=["report_id"])["report_id"].astype(str)
+    if len(rids) != len(lens):
+        raise SystemExit(f"{new_store}: results rows ({len(rids)}) != corpus "
+                         f"rows ({len(lens)}); cannot map eligibility")
+    ids = set(rids[eligible])
+    print(f"case-collision eligibility: {prone.sum()} of {len(uniques)} "
+          f"unique segments have a variant twin; {len(ids)} of {len(lens)} "
+          f"reports eligible ({100 * len(ids) / len(lens):.2f}%)")
+    return ids
+
+
+def compare_config(old_df: pd.DataFrame, new_df: pd.DataFrame, tol: float,
+                   eligible_ids: set = None):
     m = old_df.merge(new_df, on="report_id", how="outer",
                      suffixes=("_o", "_n"), indicator=True)
     joined = int((m["_merge"] == "both").sum())
@@ -95,10 +139,15 @@ def compare_config(old_df: pd.DataFrame, new_df: pd.DataFrame, tol: float):
     o, n, d = deltas_overall
     ok = ~(np.isnan(o) | np.isnan(n))
     corr = float(np.corrcoef(o[ok], n[ok])[0, 1]) if ok.sum() > 2 else np.nan
+    diff_explained = np.nan
+    if eligible_ids is not None and row_diff.any():
+        diff_ids = both["report_id"].to_numpy()[row_diff]
+        diff_explained = float(np.mean([r in eligible_ids for r in diff_ids]))
     return {
         "n_joined": joined, "n_old_only": old_only, "n_new_only": new_only,
         "max_abs_delta": max_abs, "max_delta_col": max_col,
         "frac_rows_gt_tol": float(row_diff.mean()) if len(both) else 0.0,
+        "frac_diff_explained": diff_explained,
         "overall_max_abs_delta": float(np.nanmax(d)) if len(d) else 0.0,
         "overall_mean_abs_delta": float(np.nanmean(d)) if len(d) else 0.0,
         "overall_corr": corr,
@@ -118,6 +167,10 @@ def main():
                          "normalize_segments)")
     ap.add_argument("--note", default="",
                     help="free-text context appended to the summary md")
+    ap.add_argument("--explain-case-collisions", action="store_true",
+                    help="compute the case-collision-eligible report set "
+                         "from the new store's _corpus; strict arms PASS if "
+                         ">=99.5%% of their differing rows fall in it")
     args = ap.parse_args()
 
     old_store, new_store = Path(args.old), Path(args.new)
@@ -131,6 +184,9 @@ def main():
     print(f"{len(pairs)} configs matched by signature "
           f"({unmatched_old} old / {unmatched_new} new unmatched)")
 
+    eligible_ids = (case_collision_eligible_ids(new_store)
+                    if args.explain_case_collisions else None)
+
     rows = []
     for i, r in enumerate(pairs.itertuples(), 1):
         old_p = old_store / "_cfg" / str(r.config_id_old) / "results.parquet"
@@ -143,20 +199,24 @@ def main():
         old_df, new_df = pd.read_parquet(old_p), pd.read_parquet(new_p)
         old_df["report_id"] = old_df["report_id"].astype(str)
         new_df["report_id"] = new_df["report_id"].astype(str)
-        stats = compare_config(old_df, new_df, args.tol)
+        stats = compare_config(old_df, new_df, args.tol, eligible_ids)
         strict = r.comp__method in ("weighted_average", "attention_weight")
+        explained = (eligible_ids is not None
+                     and stats["frac_diff_explained"] >= 0.995)
         status = ("PASS" if stats["frac_rows_gt_tol"] <= args.max_diff_frac
-                  else "FAIL") if strict else "POWER"
+                  or explained else "FAIL") if strict else "POWER"
         rows.append({"config_id": r.config_id_old,
                      "embedding_model": r.embedding_model,
                      "sent_method": r.sent_method,
                      "comp_method": r.comp__method,
                      "arm": "strict" if strict else "power",
                      "status": status, **stats})
+        expl = ("" if np.isnan(stats.get("frac_diff_explained", np.nan))
+                else f" explained: {100*stats['frac_diff_explained']:.2f}%")
         print(f"[{i}/{len(pairs)}] cfg {r.config_id_old} "
               f"{r.comp__method:>18} {status:>6} "
               f"max|Δ|={stats['max_abs_delta']:.2e} ({stats['max_delta_col']}) "
-              f"rows>{args.tol:g}: {100*stats['frac_rows_gt_tol']:.2f}%")
+              f"rows>{args.tol:g}: {100*stats['frac_rows_gt_tol']:.2f}%{expl}")
 
     out = pd.DataFrame(rows)
     tag = old_store.name
@@ -186,7 +246,10 @@ def main():
         f"(allowed diff-row fraction {args.max_diff_frac:g})",
         f"- rows with any |Δ| > tol: median "
         f"{100*strict['frac_rows_gt_tol'].median():.3f}%, max "
-        f"{100*strict['frac_rows_gt_tol'].max():.3f}%",
+        f"{100*strict['frac_rows_gt_tol'].max():.3f}%"
+        + (f"; differing rows case-collision-explained: min "
+           f"{100*strict['frac_diff_explained'].min():.2f}%"
+           if args.explain_case_collisions else ""),
         f"- overall_final_score mean |Δ|: median "
         f"{strict['overall_mean_abs_delta'].median():.3e}, max "
         f"{strict['overall_mean_abs_delta'].max():.3e}",
