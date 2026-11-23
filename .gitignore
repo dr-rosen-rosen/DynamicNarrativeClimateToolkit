@@ -221,3 +221,6 @@ __marimo__/
 # Local working files (session handoffs, segment caches)
 handoff_*.md
 seg_cache.sqlite
+
+# model-pipeline venv (Python 3.12 + anthropic SDK)
+.llmVenv

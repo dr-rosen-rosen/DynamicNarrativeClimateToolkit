@@ -1,0 +1,90 @@
+{
+  "generated": "2026-11-20 15:18",
+  "sheet_completion": {
+    "A": 1.0,
+    "B": 1.0
+  },
+  "humans_complete": true,
+  "MM_IDENT": 0.877,
+  "MM_WITHIN1": 0.943,
+  "MM_CJ_IDENT": 0.96,
+  "HH_QWK_POOLED": 0.53,
+  "HH_QWK_CI": [
+    0.4,
+    0.66
+  ],
+  "HH_CJ_KAPPA": 0.37,
+  "HH_CJ_KAPPA_CI": [
+    0.28,
+    0.45
+  ],
+  "HH_N_BOTH": 118,
+  "HH_EXACT": 0.6,
+  "HH_WITHIN1": 0.83,
+  "HM_QWK_POOLED": 0.68,
+  "HM_QWK_RANGE": [
+    0.58,
+    0.78
+  ],
+  "HM_CJ_KAPPA": 0.45,
+  "HM_QWK_A": 0.76,
+  "HM_QWK_B": 0.59,
+  "HM_CJ_KAPPA_A": 0.57,
+  "HM_CJ_KAPPA_B": 0.34,
+  "RULE_OK": false,
+  "VAL_H_RHO_POOLED": 0.38,
+  "VAL_H_RHO_CI": [
+    0.16,
+    0.57
+  ],
+  "HH_QWK_MSHA": 0.89,
+  "HH_QWK_RAIL": 0.55,
+  "HH_QWK_NRC": 0.77,
+  "HH_QWK_AVIATION": 0.22,
+  "VAL_H_RHO_MSHA": 0.74,
+  "VAL_H_RHO_RAIL": 0.08,
+  "VAL_H_RHO_NRC": 0.41,
+  "VAL_H_RHO_AVIATION": 0.31,
+  "VAL_H_NEFF_MSHA": 2.7,
+  "VAL_H_NEFF_RAIL": 11.9,
+  "VAL_H_NEFF_NRC": 24.1,
+  "VAL_H_NEFF_AVIATION": 36.4,
+  "VAL_H_RHO_UNW_POOLED": 0.37,
+  "VAL_H_RHO_UNW_CI_POOLED": [
+    0.2,
+    0.52
+  ],
+  "VAL_H_N_POOLED": 118,
+  "VAL_H_RHO_UNW_MSHA": 0.31,
+  "VAL_H_RHO_UNW_CI_MSHA": [
+    -0.12,
+    0.67
+  ],
+  "VAL_H_N_MSHA": 20,
+  "VAL_H_RHO_UNW_RAIL": -0.1,
+  "VAL_H_RHO_UNW_CI_RAIL": [
+    -0.48,
+    0.32
+  ],
+  "VAL_H_N_RAIL": 28,
+  "VAL_H_RHO_UNW_NRC": 0.39,
+  "VAL_H_RHO_UNW_CI_NRC": [
+    0.04,
+    0.68
+  ],
+  "VAL_H_N_NRC": 26,
+  "VAL_H_RHO_UNW_AVIATION": 0.25,
+  "VAL_H_RHO_UNW_CI_AVIATION": [
+    -0.05,
+    0.51
+  ],
+  "VAL_H_N_AVIATION": 44,
+  "VAL_M_RHO_MSHA": 0.31,
+  "VAL_M_RHO_MSHA_SEV": 0.19,
+  "VAL_M_RHO_RAIL": 0.13,
+  "VAL_M_RHO_RAIL_SEV": 0.06,
+  "VAL_M_RHO_NRC": 0.1,
+  "VAL_M_RHO_NRC_SEV": null,
+  "VAL_M_RHO_AVIATION": 0.39,
+  "VAL_M_RHO_AVIATION_SEV": null
+}
